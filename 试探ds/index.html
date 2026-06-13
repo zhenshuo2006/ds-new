@@ -1,0 +1,613 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>情绪书单 · 心灵处方笺</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0b0a16;
+    --surface: #141324;
+    --surface2: #1c1a32;
+    --gold: #c9a96e;
+    --gold-dim: #a8874a;
+    --ivory: #efe6d3;
+    --ivory-dim: #b8ad99;
+    --muted: #6b6390;
+    --rose: #d4a0a0;
+    --accent: #7c6fae;
+    --shadow: rgba(0,0,0,0.5);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: "Georgia", "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+    background: var(--bg);
+    color: var(--ivory);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.7;
+  }
+
+  #stars-canvas {
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none;
+  }
+
+  #aura {
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 30%, transparent 0%, var(--bg) 90%);
+    transition: background 3s ease;
+    pointer-events: none;
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 820px; margin: 0 auto; padding: 60px 24px 100px;
+  }
+
+  header {
+    text-align: center; margin-bottom: 56px;
+    animation: fadeDown 1.2s ease;
+  }
+  header h1 {
+    font-size: 2.4rem; font-weight: 400;
+    letter-spacing: 6px; color: var(--gold);
+    margin-bottom: 10px;
+  }
+  header h1 span { display: inline-block; }
+  header p {
+    font-size: 0.95rem; color: var(--ivory-dim);
+    letter-spacing: 3px;
+  }
+  .divider {
+    width: 60px; height: 1px; margin: 18px auto 0;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+
+  .input-section {
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s ease 0.3s both;
+  }
+  .input-wrapper {
+    position: relative;
+    background: rgba(28, 26, 50, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(201, 169, 110, 0.15);
+    border-radius: 16px;
+    padding: 6px;
+    transition: border-color 0.4s, box-shadow 0.4s;
+  }
+  .input-wrapper:focus-within {
+    border-color: rgba(201, 169, 110, 0.4);
+    box-shadow: 0 0 30px rgba(201, 169, 110, 0.06);
+  }
+  .input-wrapper textarea {
+    width: 100%; min-height: 72px; max-height: 200px;
+    padding: 18px 20px;
+    background: transparent; border: none; outline: none;
+    color: var(--ivory); font: inherit; font-size: 1.05rem;
+    resize: vertical;
+    line-height: 1.8;
+  }
+  .input-wrapper textarea::placeholder {
+    color: var(--muted); font-style: italic;
+    letter-spacing: 1px;
+  }
+  .input-actions {
+    display: flex; justify-content: flex-end; align-items: center;
+    padding: 4px 8px 8px 16px; gap: 10px;
+  }
+  .char-count {
+    font-size: 0.75rem; color: var(--muted);
+    font-family: "Georgia", serif;
+  }
+  .btn-submit {
+    padding: 10px 32px;
+    background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+    border: none; border-radius: 40px;
+    color: #0b0a16; font: inherit; font-size: 0.95rem;
+    letter-spacing: 2px; cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    opacity: 0.7; pointer-events: none;
+  }
+  .btn-submit.active {
+    opacity: 1; pointer-events: auto;
+  }
+  .btn-submit.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(201, 169, 110, 0.25);
+  }
+  .btn-submit.active:active {
+    transform: translateY(0);
+  }
+
+  .loading {
+    display: none; text-align: center; padding: 40px 0;
+  }
+  .loading.show { display: block; animation: fadeIn 0.4s ease; }
+  .loading-dots {
+    display: inline-flex; gap: 8px;
+  }
+  .loading-dots span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gold-dim);
+    animation: pulse 1.4s ease-in-out infinite both;
+  }
+  .loading-dots span:nth-child(1) { animation-delay: 0s; }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  .loading p {
+    margin-top: 14px; font-size: 0.85rem;
+    color: var(--ivory-dim); letter-spacing: 2px;
+    font-style: italic;
+  }
+
+  .result-section {
+    display: none;
+  }
+  .result-section.show {
+    display: block; animation: fadeUp 0.8s ease;
+  }
+
+  .emotion-badge {
+    text-align: center; margin-bottom: 40px;
+  }
+  .emotion-icon {
+    font-size: 2.8rem; margin-bottom: 8px;
+  }
+  .emotion-name {
+    font-size: 1.6rem; color: var(--gold);
+    letter-spacing: 4px; font-weight: 400;
+  }
+  .emotion-desc {
+    font-size: 0.9rem; color: var(--ivory-dim);
+    margin-top: 6px; font-style: italic;
+  }
+  .emotion-meter {
+    max-width: 300px; margin: 16px auto 0;
+    display: flex; gap: 4px; justify-content: center;
+  }
+  .emotion-meter span {
+    flex: 1; height: 3px; border-radius: 2px;
+    background: rgba(201, 169, 110, 0.15);
+    transition: background 0.8s ease;
+  }
+  .emotion-meter span.active { background: var(--gold); }
+
+  .books-grid {
+    display: flex; flex-direction: column; gap: 24px;
+  }
+
+  .book-card {
+    background: rgba(28, 26, 50, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(201, 169, 110, 0.08);
+    border-radius: 14px;
+    padding: 28px 28px 32px;
+    transition: border-color 0.4s, transform 0.3s, box-shadow 0.3s;
+    animation: cardIn 0.7s ease both;
+  }
+  .book-card:nth-child(1) { animation-delay: 0.1s; }
+  .book-card:nth-child(2) { animation-delay: 0.25s; }
+  .book-card:nth-child(3) { animation-delay: 0.4s; }
+  .book-card:nth-child(4) { animation-delay: 0.55s; }
+  .book-card:nth-child(5) { animation-delay: 0.7s; }
+
+  .book-card:hover {
+    border-color: rgba(201, 169, 110, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .book-header {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .book-title {
+    font-size: 1.25rem; font-weight: 400;
+    color: var(--ivory); letter-spacing: 2px;
+  }
+  .book-author {
+    font-size: 0.85rem; color: var(--gold-dim);
+    font-style: italic;
+  }
+  .book-origin {
+    display: inline-block; margin-top: 2px;
+    font-size: 0.75rem; color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .book-origin::before {
+    content: "—— "; letter-spacing: 0;
+  }
+  .book-reason {
+    margin-top: 16px; font-size: 0.95rem;
+    color: var(--ivory-dim);
+    line-height: 1.9;
+    border-left: 2px solid rgba(201, 169, 110, 0.2);
+    padding-left: 16px;
+  }
+
+  footer {
+    text-align: center; margin-top: 72px;
+    font-size: 0.75rem; color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(30px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes pulse {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 32px 16px 80px; }
+    header h1 { font-size: 1.7rem; letter-spacing: 4px; }
+    header p { font-size: 0.8rem; }
+    .input-wrapper textarea { font-size: 0.95rem; min-height: 60px; padding: 14px 16px; }
+    .btn-submit { padding: 8px 24px; font-size: 0.85rem; }
+    .book-card { padding: 20px 18px 24px; }
+    .book-title { font-size: 1.1rem; }
+    .book-reason { font-size: 0.88rem; padding-left: 12px; }
+    .emotion-name { font-size: 1.3rem; }
+  }
+</style>
+</head>
+<body>
+<canvas id="stars-canvas"></canvas>
+<div id="aura"></div>
+
+<div class="container">
+  <header>
+    <h1><span>心</span><span>灵</span><span>处</span><span>方</span><span>笺</span></h1>
+    <p>写下你的心绪 · 为你寻一册共鸣</p>
+    <div class="divider"></div>
+  </header>
+
+  <section class="input-section">
+    <div class="input-wrapper">
+      <textarea id="emotion-input" rows="2" placeholder="此刻你心中翻涌的是什么？某个词语、一段心情、或一声叹息……"></textarea>
+      <div class="input-actions">
+        <span class="char-count" id="char-count">0</span>
+        <button class="btn-submit" id="btn-submit">寻 书</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="loading" id="loading">
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+    <p>在文字的海里打捞那一页共鸣……</p>
+  </div>
+
+  <section class="result-section" id="result-section">
+    <div class="emotion-badge">
+      <div class="emotion-icon" id="emotion-icon"></div>
+      <div class="emotion-name" id="emotion-name"></div>
+      <div class="emotion-desc" id="emotion-desc"></div>
+      <div class="emotion-meter" id="emotion-meter"></div>
+    </div>
+    <div class="books-grid" id="books-grid"></div>
+  </section>
+
+  <footer>—— 每一颗心都值得被温柔照见 ——</footer>
+</div>
+
+<script>
+const EMOTIONS = [
+  { id:"joy", label:"喜悦", icon:"☀️", desc:"心中明亮，万物生辉",
+    keywords:["喜悦","快乐","开心","幸福","欢喜","高兴","愉悦","欢欣","雀跃","甜蜜","美好","灿烂","满足","感恩","庆幸","温暖","乐","笑","哈哈","欣","喜","欢"],
+    keywordsEn:["joy","happy","delight","glad","cheerful","blessed","grateful","wonderful","amazing","elated","joyful","bliss"],
+    color:"#c9a96e" },
+  { id:"sadness", label:"悲伤", icon:"🌧", desc:"心里下了一场雨",
+    keywords:["悲伤","难过","伤心","哀伤","悲痛","心碎","绝望","失落","忧伤","哭泣","泪","哭","痛","苦","悲","哀","凄","黯然","消沉","抑郁","沉重"],
+    keywordsEn:["sad","sadness","grief","grieve","heartbroken","cry","tears","mourn","sorrow","despair","melancholy","unhappy","down","devastated"],
+    color:"#6b7db3" },
+  { id:"anger", label:"愤怒", icon:"🔥", desc:"胸中有火，不吐不快",
+    keywords:["愤怒","生气","恼火","暴躁","烦","烦躁","怒","气","恨","憎","厌恶","恼","憋屈","不爽","抓狂","愤","戾气"],
+    keywordsEn:["angry","anger","furious","mad","rage","frustrated","annoyed","irritated","hate","resent","wrath","outraged"],
+    color:"#c06040" },
+  { id:"fear", label:"恐惧", icon:"🌫", desc:"迷雾之中，心在颤抖",
+    keywords:["恐惧","害怕","惊慌","不安","焦虑","紧张","恐慌","畏惧","怕","惊","悚","惶","恐","心惊","忐忑","怯"],
+    keywordsEn:["fear","afraid","scared","terrified","anxious","panic","dread","horror","frightened","nervous","worried","uneasy"],
+    color:"#6b5a7a" },
+  { id:"love", label:"爱", icon:"♥", desc:"心底柔软，万物可爱",
+    keywords:["爱","爱情","恋","思念","想念","牵挂","温柔","深情","心动","暗恋","告白","相守","眷恋","缱绻","痴","慕","钟情"],
+    keywordsEn:["love","lover","romance","passion","adore","cherish","affection","tender","heart","devotion","yearn","longing","desire"],
+    color:"#c47080" },
+  { id:"loneliness", label:"孤独", icon:"🌙", desc:"人群之中，独自一人",
+    keywords:["孤独","寂寞","孤单","寂寥","落寞","孤","独","无人","空旷","清冷","凄清","孑然","疏离"],
+    keywordsEn:["lonely","alone","solitude","isolated","abandoned","forsaken","solitary","lonesome","detached"],
+    color:"#7b6b8a" },
+  { id:"nostalgia", label:"怀旧", icon:"🕯", desc:"旧时光里，有光的温度",
+    keywords:["怀旧","怀念","回忆","往昔","旧","曾","忆","童年","故乡","故人","老","过去","留恋","时光","岁月","曾经","那年"],
+    keywordsEn:["nostalgia","nostalgic","reminisce","memory","past","remember","childhood","home","old times","longing for","yesterday"],
+    color:"#9a8a6a" },
+  { id:"hope", label:"希望", icon:"✨", desc:"黎明前的光，正在生长",
+    keywords:["希望","期待","盼望","憧憬","向往","信念","相信","光明","未来","梦想","理想","曙光","期冀","盼","愿"],
+    keywordsEn:["hope","hopeful","optimistic","believe","dream","faith","aspire","bright","future","possibility","inspire","look forward"],
+    color:"#7ca86a" },
+  { id:"confusion", label:"迷茫", icon:"🌀", desc:"路在雾中，心在寻找",
+    keywords:["迷茫","困惑","茫然","彷徨","疑惑","不解","迷失","混沌","模糊","犹豫","纠结","迷惘","惑","惘"],
+    keywordsEn:["confused","confusion","lost","uncertain","puzzled","perplexed","bewildered","doubt","hesitant","unsure","ambiguous"],
+    color:"#7a8a9a" },
+  { id:"peace", label:"平静", icon:"🍃", desc:"心如止水，万物安然",
+    keywords:["平静","安宁","宁静","淡然","从容","安详","平和","静谧","恬淡","闲适","悠然","安稳","静","淡","禅"],
+    keywordsEn:["peace","calm","serene","tranquil","still","quiet","gentle","peaceful","relaxed","content","harmony","zen"],
+    color:"#6a9a7a" },
+  { id:"wonder", label:"惊奇", icon:"🌟", desc:"世界之大，超乎想象",
+    keywords:["惊奇","惊叹","震撼","奇妙","神奇","不可思议","惊艳","玄幻","奥妙","玄","妙","奇","叹"],
+    keywordsEn:["wonder","amaze","astonish","miracle","magical","incredible","awesome","spectacular","marvel","extraordinary","mystery"],
+    color:"#8a8ac0" },
+  { id:"yearning", label:"渴望", icon:"🌊", desc:"心底有声，遥遥呼唤",
+    keywords:["渴望","向往","追求","梦想","野心","欲望","热望","执念","期盼","盼","愿","希冀","奢望","贪婪","憧憬","炽热"],
+    keywordsEn:["yearn","yearning","desire","crave","aspire","ambition","longing","passionate","eager","hunger","thirst","dream"],
+    color:"#c09060" }
+];
+
+const BOOKS = [
+  { id:1, emotion:"joy", title:"《小王子》", author:"安托万·德·圣-埃克苏佩里", origin:"法国",
+    reason:"如果你爱上了一朵生长在一颗星星上的花，那么夜间，你看着星空就会感到甜蜜愉快。这本小小的书教会我们，真正重要的东西用眼睛是看不见的，唯有用心才能看见。在每一页简单的句子背后，藏着关于爱与驯服的古老秘密，读它的时候，你会想起自己曾经也是一个孩子。" },
+  { id:2, emotion:"joy", title:"《窗边的小豆豆》", author:"黑柳彻子", origin:"日本",
+    reason:"世界上真有那样一所学校吗？电车是教室，大树是校门，校长可以听一个孩子说四个小时的话。小豆豆用她天真明亮的眼睛告诉我们，快乐从来不复杂——它藏在第一次爬进树的笨拙里，藏在午饭时山的味道和海的味道里。读完你会想：原来被理解的感觉，是世间最温暖的礼物。" },
+  { id:3, emotion:"joy", title:"《生活是很好玩的》", author:"汪曾祺", origin:"中国",
+    reason:"汪曾祺先生说：我们有过各种创伤，但我们今天应该快活。他写草木、写吃食、写市井烟火，笔触平淡却灵光四溢。读他的文章，你会觉得生活里那些细碎的小事——一碟咸菜、一盆兰草、一阵巷子里的风——都变得有了光泽。快乐不在远处，就在你手边那件不起眼的小事里。" },
+  { id:4, emotion:"joy", title:"《芒果街上的小屋》", author:"桑德拉·希斯内罗丝", origin:"美国",
+    reason:"这是一本由几十个小碎片拼成的成长之书，像一盒彩色的玻璃珠。小女孩埃斯佩朗莎在芝加哥拉丁裔社区里写诗、做梦、观察世界。她的语言天真而灼热，每一段都像一首小诗。当你读到她想要一所属于自己的房子时，你会微笑——因为她让你想起，最朴素愿望里蕴藏着的、最蓬勃的生机。" },
+  { id:5, emotion:"joy", title:"《牧羊少年奇幻之旅》", author:"保罗·科埃略", origin:"巴西",
+    reason:"当你真心渴望某样东西时，整个宇宙都会合力助你实现。少年圣地亚哥跨越沙漠去寻找宝藏，最后发现宝藏原来就在他出发的地方。这不是一个关于远方的故事，而是一个关于倾听内心的寓言。每一页都闪着金色的光，像沙漠里的星光一样让人心安。" },
+
+  { id:6, emotion:"sadness", title:"《活着》", author:"余华", origin:"中国",
+    reason:"福贵的一生是一个时代的缩影，他亲手埋葬了所有亲人，最后只剩一头老牛与他相伴。余华用最平静的笔调写最深的苦难，读的时候你会觉得胸口被什么东西压着，但又不忍心放下。这本书让你明白——活着本身就是一种力量，即便在无尽的失去之后，人依然能从最底处找到活下去的理由。" },
+  { id:7, emotion:"sadness", title:"《挪威的森林》", author:"村上春树", origin:"日本",
+    reason:"我到底在什么地方？渡边一遍遍问自己。这是一个关于青春与死亡、爱情与失落的故事。村上春树用他特有的、干净又忧伤的笔调，写尽了人在二十岁左右那种说不清的痛楚。直子的笑、绿子的倔强、木月的沉默——那些人物会住进你的心里，很久都搬不走。" },
+  { id:8, emotion:"sadness", title:"《追风筝的人》", author:"卡勒德·胡赛尼", origin:"阿富汗/美国",
+    reason:"为你，千千万万遍。哈桑的这句话，像一根刺扎进心里。这是一个关于背叛与救赎的故事，在战火纷飞的阿富汗背景下，两个少年之间的友谊被撕碎又试图拼合。胡赛尼的笔触有砂砾的粗糙感，也有泪水的温度。读到最后你可能会哭，但那是被洗净后的眼泪。" },
+  { id:9, emotion:"sadness", title:"《百年孤独》", author:"加西亚·马尔克斯", origin:"哥伦比亚",
+    reason:"马孔多镇在下雨，那场雨下了四年十一个月零两天。布恩迪亚家族七代人的故事像一条悲伤的河流，每个人都在自己的孤独里打转。马尔克斯用魔幻的笔触写出了一种比现实更真实的悲伤——宿命般的、灿烂的、轰轰烈烈又归于虚无的悲伤。读它如同经历一场漫长而华丽的梦境，醒来后怅然若失。" },
+  { id:10, emotion:"sadness", title:"《雪国》", author:"川端康成", origin:"日本",
+    reason:"穿过县界长长的隧道，便是雪国。岛村一次又一次地前往那个雪中的世界，去见驹子——一个在雪乡里做艺妓的姑娘。川端康成的文字如雪一般清冷而细腻，他写的不是故事，而是一种感觉：一种无论怎样努力都抓不住的、如雪融于掌心的徒劳之美。读完之后，你会沉默很久。" },
+
+  { id:11, emotion:"anger", title:"《1984》", author:"乔治·奥威尔", origin:"英国",
+    reason:"老大哥在看着你。这不是一本让人舒服的书，但它是一本必须读的书。奥威尔构建了一个思想被监控、语言被裁剪的极权世界，每一页都带着令人窒息的压迫感。愤怒吗？是的。但正是这种愤怒提醒着我们：有些东西值得为之战斗，即使是在最黑暗的时刻。" },
+  { id:12, emotion:"anger", title:"《愤怒的葡萄》", author:"约翰·斯坦贝克", origin:"美国",
+    reason:"乔德一家被大萧条和沙尘暴赶出家园，踏上前往加利福尼亚的流浪之路。斯坦贝克的文字像干裂的土地一样粗粝，他笔下那些穷苦农民的愤怒不是呐喊，而是一种从骨子里渗出来的、沉甸甸的力量。这本书是对不公的控诉，也是对人类尊严的颂歌。" },
+  { id:13, emotion:"anger", title:"《动物农场》", author:"乔治·奥威尔", origin:"英国",
+    reason:"所有的动物都是平等的，但有些动物比其他动物更平等。奥威尔用一个农场的寓言，把权力的腐化讲得透彻又辛辣。你会对那些猪感到愤怒，然后意识到这不仅仅是一个关于农场的故事——它照见了人类社会里那些令人不安的真相。" },
+  { id:14, emotion:"anger", title:"《罪与罚》", author:"陀思妥耶夫斯基", origin:"俄罗斯",
+    reason:"拉斯柯尼科夫杀死了一个老妇人，然后被自己的良心折磨得几乎发狂。陀思妥耶夫斯基把笔探入人性的最深处，写出了一个灵魂从愤怒到悔罪的完整弧光。这本书让你愤怒于社会的不公，愤怒于人性的幽暗，但最终它追问的是——在绝望的深渊里，是否还有被救赎的可能？" },
+
+  { id:15, emotion:"fear", title:"《鼠疫》", author:"阿尔贝·加缪", origin:"法国",
+    reason:"一座城市被鼠疫封锁，人们被恐惧攥住喉咙。但加缪写的不是灾难本身，而是人在灾难中的选择。里厄医生日夜奔忙，不是因为英雄主义，而是因为那不过是该做的事。这本书是一剂清醒的药——恐惧不可耻，可耻的是被恐惧压垮而不作为。在至暗时刻，人的尊严在于依然选择行动。" },
+  { id:16, emotion:"fear", title:"《变形记》", author:"弗朗茨·卡夫卡", origin:"捷克",
+    reason:"一天早晨，格里高尔·萨姆沙从不安的睡梦中醒来，发现自己变成了一只巨大的甲虫。卡夫卡用这个荒诞的设定，写尽了人在世界面前的孤独与恐惧。没有激烈的冲突，没有恐怖的怪物，只有一种挥之不去的、冰凉的无助感。读完你会觉得，比变成甲虫更可怕的，是身边的人渐渐不再把你当人看待。" },
+  { id:17, emotion:"fear", title:"《失明症漫记》", author:"若泽·萨拉马戈", origin:"葡萄牙",
+    reason:"一座城市里的人接二连三地失明了，白色而不是黑色的失明。萨拉马戈用一个骇人的假设，撕开了文明的脆弱外衣。当所有人都在黑暗中摸索，秩序崩塌，人性的善恶赤裸裸地暴露出来。这本书让你不寒而栗，但也让你看到——即使在最深的黑暗中，依然有人选择不闭眼。" },
+  { id:18, emotion:"fear", title:"《人间失格》", author:"太宰治", origin:"日本",
+    reason:"生而为人，我很抱歉。太宰治用近乎自毁的坦诚，写出了一个灵魂在世间无处安放的战栗。大庭叶藏戴着滑稽的面具活了一生，内心却无时无刻不在恐惧——恐惧他人的目光，恐惧真实的关系，恐惧活着本身。这本书是一面漆黑的镜子，但凝视它的人，反而会从中学到一种温柔的勇气。" },
+
+  { id:19, emotion:"love", title:"《傲慢与偏见》", author:"简·奥斯汀", origin:"英国",
+    reason:"我克制得住吗？是的，当我把你从昨晚的状况中解救出来，我就已经彻底沦陷了。达西先生第一次告白时，笨拙得让人心动。奥斯汀用她机智又温柔的笔，写透了爱情里那些微妙的博弈：自尊与偏见、理性与激情、社会的规训与个人的选择。读完你会相信，好的爱情是两个人各自穿越偏见，然后在某处平等地相遇。" },
+  { id:20, emotion:"love", title:"《红楼梦》", author:"曹雪芹", origin:"中国",
+    reason:"一个是阆苑仙葩，一个是美玉无瑕。宝黛之间的爱情不是轰轰烈烈的誓言，而是大观园里那些细小的心事——一句没说完的话、一块旧手帕、一场葬花的雨。曹雪芹写尽了爱的万千形态：深情的、荒唐的、痴迷的、无奈的。但归根到底，他在说：世间好物不坚牢，彩云易散琉璃脆。正因为如此，每一次心动都值得被珍藏。" },
+  { id:21, emotion:"love", title:"《情人》", author:"玛格丽特·杜拉斯", origin:"法国",
+    reason:"我已经老了。这个著名的开头，把一段发生在湄公河渡船上的恋情推向了永恒。一个十五岁的法国少女，一个中国北方的富家少爷，他们的爱从一开始就知道没有结局。杜拉斯用她碎片化的、像低语一样的文字写尽了情欲与离别的底色。那种痛楚的、灼热的、永远不会被遗忘的爱，就像西贡的雨季一样潮湿而缠绵。" },
+  { id:22, emotion:"love", title:"《爱的艺术》", author:"埃里希·弗洛姆", origin:"德国/美国",
+    reason:"弗洛姆说：爱不是一种感觉，而是一种能力。这本书不教你如何找到爱，而是告诉你如何去成为一个有爱能力的人。它像一堂温柔而深刻的人生课，关于关心、责任、尊重和了解。读完你会明白——爱不是一个对象问题，而是一个能力问题。真正的爱是在不失去自我的前提下，与他人建立深刻联结的艺术。" },
+
+  { id:23, emotion:"loneliness", title:"《局外人》", author:"阿尔贝·加缪", origin:"法国",
+    reason:"默尔索在母亲葬礼上没有哭，于是整个社会判了他死刑。加缪用冷峻到近乎冷漠的文字，塑造了一个拒绝表演的灵魂。他不是不爱这个世界，他只是不愿意说谎。这本书是孤独者的宣言——即使与世界为敌，也要诚实地活着。那种孤独是一枚勋章，而不是一个伤口。" },
+  { id:24, emotion:"loneliness", title:"《瓦尔登湖》", author:"亨利·戴维·梭罗", origin:"美国",
+    reason:"梭罗在瓦尔登湖畔住了两年零两个月，自己盖木屋、种豆子、观察湖水与星辰。他不是逃避世界，而是想找到生活最本质的样子。我之所以独处，并不是因为我喜欢孤独，而是因为我不想在所有热闹中都感到孤独。这本书是一剂给现代人的药，教你如何在喧嚣之中为自己开辟一座宁静的湖泊。" },
+  { id:25, emotion:"loneliness", title:"《一句顶一万句》", author:"刘震云", origin:"中国",
+    reason:"一开始你在找一句说得着的话。找着找着，发现这一辈子其实就是想找一个能说得着的人。杨百顺和牛爱国，两个不相识的人被同一根线牵着——人这一生，最深的孤独不是没有人陪伴，而是没有一个能说句心里话的人。刘震云用中原大地的烟火气，把孤独写得入骨三分。" },
+  { id:26, emotion:"loneliness", title:"《心》", author:"夏目漱石", origin:"日本",
+    reason:"我在镰仓的海边遇见了一位先生，先生独自生活，带着某种无法言说的秘密。夏目漱石以细腻得近乎残忍的笔触，层层剥开一个孤独灵魂的内核。先生对我说：你要记住，世上没有一种孤独，比得上一个背负秘密的人的孤独。读这本书，像是和一个沉默的朋友对坐了一夜，什么都没说，却又什么都说了。" },
+  { id:27, emotion:"nostalgia", title:"《追忆似水年华》", author:"马塞尔·普鲁斯特", origin:"法国",
+    reason:"一块玛德琳蛋糕浸入茶水的瞬间，童年所有的记忆像潮水般涌来。普鲁斯特用他绵长如呼吸的句子，把回忆变成了一门艺术。这本书不是一个故事，而是一座由记忆砖瓦砌成的宏伟教堂。读它的时候，你也会想起自己生命里那些被忽略的瞬间——原来它们从未消失，只是静静等在某一块蛋糕、一朵花、一阵风里。" },
+  { id:28, emotion:"nostalgia", title:"《边城》", author:"沈从文", origin:"中国",
+    reason:"湘西茶峒小镇，一条渡船，一个叫翠翠的女孩。沈从文用清澈如溪水的文字，勾勒出一个渐渐消失的田园中国。那些端午的龙舟、月光下的歌声、渡口边默默的心事——都像一幅泛蓝的水墨画，美得让人心疼。读《边城》，你会想念一个从未去过的地方，那地方叫故乡。" },
+  { id:29, emotion:"nostalgia", title:"《城南旧事》", author:"林海音", origin:"中国",
+    reason:"小英子在北京城南的胡同里度过了她的童年。惠安馆的疯女人、草丛里的小偷、骑着毛驴去远方的宋妈——那些人都随着骆驼队远去的铃铛声消失了。林海音用一个孩子的眼睛看世界，天真中有哀愁，离别中有成长。读它的时候，你也会听见自己童年深处那一声悠长的吆喝：卖——糖——葫芦——" },
+  { id:30, emotion:"nostalgia", title:"《流动的盛宴》", author:"欧内斯特·海明威", origin:"美国",
+    reason:"如果你在年轻时有幸在巴黎生活过，那么此后无论你到哪里，巴黎都将与你同在，因为巴黎是一席流动的盛宴。海明威晚年写下这段青春记忆：在咖啡馆写作、在塞纳河边散步、和菲茨杰拉德一起旅行、在莎士比亚书店借书。这本书是一张泛黄的明信片，寄自一个逝去的黄金时代。读它会让你想念那些自己从未经历过的好时光。" },
+
+  { id:31, emotion:"hope", title:"《肖申克的救赎》", author:"斯蒂芬·金", origin:"美国",
+    reason:"安迪用一把小锤子挖了十九年的地道，最后爬过五百码的污水管道，重获自由。这不是一个越狱故事——这是一个关于希望从不熄灭的寓言。瑞德说：有些鸟儿是关不住的，它们的羽毛太鲜亮了。在你觉得快要撑不下去的时候，请想一想安迪在雨中张开双臂的样子。希望不是奢侈品，而是活下去的必需品。" },
+  { id:32, emotion:"hope", title:"《你当像鸟飞往你的山》", author:"塔拉·韦斯特弗", origin:"美国",
+    reason:"塔拉在一个与世隔绝的极端家庭长大，父亲不相信学校，不相信医院，只相信末日将至。她通过自学考上了大学，一路走进剑桥大学和哈佛大学的殿堂。但这本书不是励志鸡汤，而是一个灵魂挣脱束缚时的撕裂与新生。教育不是学会了多少知识，而是获得了重新讲述自己故事的权力。飞到你的山上去吧，不管有多远。" },
+  { id:33, emotion:"hope", title:"《平凡的世界》", author:"路遥", origin:"中国",
+    reason:"孙少安和孙少平两兄弟在黄土高原的穷苦中挣扎、奋斗、相爱、失去。路遥用大地一样厚实的笔触，写尽了普通人的尊严与梦想。他们没有被命运眷顾，但他们从来没有放弃过。读完你会有一种坚定的力量——生活是平凡的，但在平凡中守住内心的火焰，就是一种了不起的英雄主义。" },
+  { id:34, emotion:"hope", title:"《许三观卖血记》", author:"余华", origin:"中国",
+    reason:"许三观一生卖了十二次血，每一次都是为了家人。最后一次，他想为自己卖一次血——但已经没人要他的血了，他老了。余华用最素朴的语言写出了一种让人想哭又想笑的、滚烫的生命力。许三观不伟大、不聪明、不勇敢，但他生命里那股子拗劲儿，让你相信：人可以被生活压垮，但永远不会被它打败。" },
+  { id:35, emotion:"hope", title:"《布鲁克林有棵树》", author:"贝蒂·史密斯", origin:"美国",
+    reason:"弗兰西·诺兰生活在纽约布鲁克林的贫民区，她有酗酒的父亲、辛苦的母亲和一棵长在贫瘠水泥地上的天堂树。她喜欢读书，她相信总有一天生活会不一样。这本书里的希望不是从天而降的奇迹，而是从泥土里一寸一寸长出来的倔强。贝蒂·史密斯写道：这棵树长在贫瘠的土地上，但它依然茂盛。读它，你会想成为一棵那样的树。" },
+
+  { id:36, emotion:"confusion", title:"《苏菲的世界》", author:"乔斯坦·贾德", origin:"挪威",
+    reason:"十四岁的苏菲不断收到神秘来信：你是谁？世界从哪里来？就这样，她开始了一场穿越西方哲学史的冒险。贾德用一部小说，把两千年的人类智慧编织成一个悬疑故事。如果你正感到迷茫，这本书会像一束光——它不给你答案，但它给你提问的勇气。当你开始思考，迷茫就不再是困境，而是探索的起点。" },
+  { id:37, emotion:"confusion", title:"《麦田里的守望者》", author:"J.D.塞林格", origin:"美国",
+    reason:"霍尔顿·考尔菲德被学校开除了，他穿着一顶红色猎帽在纽约游荡了三天。他讨厌一切虚伪的人，管他们叫假模假式。但他心里有一个柔软的梦想：站在一片麦田的悬崖边，抓住每一个快要掉下去的孩子。每个年轻人都有一段霍尔顿的时刻——觉得全世界都不懂我。后来你才发现，那种愤怒和迷茫，恰恰是你最真实的时刻。" },
+  { id:38, emotion:"confusion", title:"《围城》", author:"钱钟书", origin:"中国",
+    reason:"城里的人想逃出来，城外的人想冲进去。婚姻、职业、人生——处处是围城。方鸿渐辗转于爱情、事业、家庭之间，总觉得自己选错了路。钱钟书用他刻薄又精准的笔，把知识分子的软弱和自欺写到骨子里。读这本书你会心一笑，然后愣住——因为你在方鸿渐身上看到了自己。但没关系，承认迷茫，才是清醒的开始。" },
+  { id:39, emotion:"confusion", title:"《海边的卡夫卡》", author:"村上春树", origin:"日本",
+    reason:"一个叫卡夫卡的少年离家出走，去往四国。另一条线里，一个叫中田的老人在东京和猫说话。两条线看似毫不相干，却在命运的某处交汇。村上春树用他标志性的奇幻笔触，写出了一个关于成长与宿命的谜题。这本书就像一面迷宫，你会在其中迷路，也会在其中找到自己。当你困惑于人生的方向时，这个故事会告诉你：有时候，迷路本身就是答案。" },
+
+  { id:40, emotion:"peace", title:"《山茶文具店》", author:"小川糸", origin:"日本",
+    reason:"在镰仓小町通的一条小巷里，有一家帮人代笔写信的老文具店。雨宫鸠子替客人写情书、写绝交信、写给在天国的人的信。小川糸用温润如玉的文字，写尽了文字的温度和生活的质地——一杯茶、一碟点心、一封折角信。读这本书像在春日午后晒着太阳打盹，身心都舒展了。" },
+  { id:41, emotion:"peace", title:"《浮生六记》", author:"沈复", origin:"中国（清）",
+    reason:"沈复和陈芸是一对清贫而风雅的夫妻。他们种花、喝酒、赏月、逛庙会，在简陋的生活里过出了最精致的诗意。芸娘说：他年当与君卜筑于此，买绕屋菜园十亩，课仆妪，植瓜蔬，以供薪水。君画我绣，以为诗酒之需。布衣菜饭，可乐终身。这本书是喧嚣世界里的一泊静水，让人相信：真正的富足不在于拥有多少，而在于感受到多少。" },
+  { id:42, emotion:"peace", title:"《人间草木》", author:"汪曾祺", origin:"中国",
+    reason:"汪曾祺写栀子花：栀子花粗粗大大，又香得掸都掸不开，于是为文雅人不取，以为品格不高。栀子花说：去你妈的，我就是要这样香，香得痛痛快快，你们他妈的管得着吗！读到这里你一定会笑出来。他写草木、写美食、写四时风物，字里行间是一个经历过苦难却选择温柔的人。这本书是一帖安神的药，教你从一花一叶中找到内心的平静。" },
+  { id:43, emotion:"peace", title:"《人间值得》", author:"中村恒子", origin:"日本",
+    reason:"一位九十岁的老奶奶心理医生，用她平淡又通透的人生智慧告诉你：人生不必太用力。她不是教你追求成功，而是教你接受自己的普通，在平凡的日常里找到安宁。工作、关系、孤独、死亡——她用最轻的语气说最重的话。读这本书像和一位慈祥的长辈聊天，聊完之后，心里那个紧绷的结就慢慢松开了。" },
+
+  { id:44, emotion:"wonder", title:"《银河系漫游指南》", author:"道格拉斯·亚当斯", origin:"英国",
+    reason:"地球被拆了——为了建一条星际高速公路。亚瑟·登特穿着睡衣就被好友拖进了太空，开始了一场荒诞到极致的银河系大冒险。道格拉斯·亚当斯的幽默像烟花一样噼里啪啦地炸开，每一页都有让你笑出声的奇思妙想。42是生命、宇宙以及任何事情的终极答案吗？读完这本书你会相信：宇宙比我们想象的更疯狂，也更有趣。" },
+  { id:45, emotion:"wonder", title:"《看不见的城市》", author:"伊塔洛·卡尔维诺", origin:"意大利",
+    reason:"马可·波罗向忽必烈汗描述他旅行中到访过的城市——每一座都不可思议：建在高跷上的城市、像蛛网一样悬浮的城市、每年都会消失一次的城市。但卡尔维诺写的不是地理，而是人类欲望与记忆的隐喻。这本书像一盒璀璨的宝石，每一段都能让你停下呼吸。读它的时候，你会重新打量自己居住的城市——也许它也藏着无数看不见的故事。" },
+  { id:46, emotion:"wonder", title:"《哈利·波特与魔法石》", author:"J.K.罗琳", origin:"英国",
+    reason:"你对着一堵砖墙走去，心里想着九又四分之三站台。当哈利第一次穿过那堵墙，整个世界都变了。猫头鹰送来录取通知书、会移动的楼梯、会说话的画像——罗琳创造了一个让你此生都想去一次的魔法世界。这本书教会我们的不只是魔法，更是勇气、友谊和选择的力量。不管你多大，翻开它，你依然是那个等待猫头鹰来信的孩子。" },
+  { id:47, emotion:"wonder", title:"《庄子》", author:"庄周", origin:"中国（战国）",
+    reason:"庄周梦见了蝴蝶，醒来后不知道自己是梦见蝴蝶的庄周，还是梦见庄周的蝴蝶。两千多年前的这个人，用瑰丽无边的想象，讲了一个又一个让人目瞪口呆的故事——鲲鹏展翅九万里、庖丁解牛游刃有余。他不是在讲道理，而是在邀请你想象一种完全不同的活法。读庄子，像在思想的星空里失重漂浮。" },
+
+  { id:48, emotion:"yearning", title:"《月亮和六便士》", author:"毛姆", origin:"英国",
+    reason:"一个伦敦的股票经纪人，人到中年，突然抛弃妻子和优渥的生活，去了巴黎画画。所有人都觉得他疯了。查尔斯·斯特里克兰德说：我必须画画，就像溺水的人必须挣扎。毛姆用这个故事追问一个人生永恒的命题——你愿意为内心的火焰燃烧到什么程度？满地都是六便士，他却抬头看见了月亮。" },
+  { id:49, emotion:"yearning", title:"《红与黑》", author:"司汤达", origin:"法国",
+    reason:"于连·索雷尔是一个木匠的儿子，他野心勃勃，要用才华和美貌征服十九世纪的法国上流社会。他渴望荣誉、渴望爱情、渴望被看见。司汤达以手术刀般的精准，剖开了一个年轻人内心最热烈的欲望和最隐秘的脆弱。于连成也野心，败也野心。但他那种近乎悲壮的向上攀爬的姿态，让每一个心中有梦的人都无法侧目。" },
+  { id:50, emotion:"yearning", title:"《了不起的盖茨比》", author:"F·斯科特·菲茨杰拉德", origin:"美国",
+    reason:"盖茨比站在长岛的海岸边，伸出双臂，试图抓住对岸那一盏绿灯。那盏灯代表黛西，代表他五年来所有渴望的总和。菲茨杰拉德用璀璨又哀伤的文字，写尽了美国梦的光辉与幻灭。盖茨比了不起的地方，不是他的财富，而是他那种近乎愚蠢的、不可磨灭的信念——即使知道一切皆是虚妄，他依然选择相信。" },
+  { id:51, emotion:"yearning", title:"《茶花女》", author:"小仲马", origin:"法国",
+    reason:"玛格丽特·戈蒂埃是巴黎最美的妓女，她总是佩戴一朵白茶花。阿尔芒遇见她，爱上了她，想要把她从那个光鲜而堕落的世界里救出来。但他们的爱情像茶花一样——美丽、脆弱、注定要凋零。小仲马写了一个风尘女子的渴望与牺牲。她渴望被当作一个人来爱，而不是一件被消费的商品。那个愿望如此卑微，却又如此崇高。" }
+];
+function analyzeEmotion(text) {
+  if (!text || !text.trim()) return null;
+  const t = text.trim();
+  const scores = EMOTIONS.map(emo => {
+    let score = 0;
+    for (const kw of emo.keywords) {
+      const regex = new RegExp(kw, "g");
+      const matches = t.match(regex);
+      if (matches) score += matches.length * 2;
+    }
+    for (const kw of emo.keywordsEn) {
+      const regex = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+      const matches = t.match(regex);
+      if (matches) score += matches.length * 1.5;
+    }
+    return { emotion: emo, score };
+  });
+
+  const total = scores.reduce((s, e) => s + e.score, 0);
+  if (total === 0) {
+    const posWords = ["好","美","棒","赞","喜欢","爱","幸福","暖","乐","笑","甜","感谢","愿","安","光","静","希望","温柔","灿烂","明亮"];
+    const negWords = ["坏","痛","苦","难过","哭","伤","悲","哀","恨","怒","烦","怕","累","倦","暗","冷","灰","空","绝望","压抑","沉重","孤独"];
+    let pos = 0, neg = 0;
+    for (const w of posWords) { if (t.includes(w)) pos++; }
+    for (const w of negWords) { if (t.includes(w)) neg++; }
+    if (pos > neg) {
+      const idx = scores.findIndex(s => s.emotion.id === "peace");
+      if (idx >= 0) scores[idx].score = 1;
+    } else if (neg > pos) {
+      const idx = scores.findIndex(s => s.emotion.id === "sadness");
+      if (idx >= 0) scores[idx].score = 1;
+    }
+  }
+
+  const sorted = scores.filter(e => e.score > 0).sort((a,b) => b.score - a.score);
+  if (sorted.length === 0) return null;
+
+  const dominant = sorted[0].emotion;
+  const secondary = sorted.length > 1 && sorted[1].score / sorted[0].score > 0.4
+    ? sorted[1].emotion : null;
+  const intensity = Math.min(10, Math.max(1, Math.round((sorted[0].score / 6) * 10)));
+
+  return { dominant, secondary, intensity, sorted: sorted.map(s => s.emotion) };
+}
+
+function getRecommendations(emotionResult) {
+  if (!emotionResult) return [];
+  const { dominant, secondary } = emotionResult;
+  let pool = BOOKS.filter(b => b.emotion === dominant.id);
+  if (secondary && pool.length < 4) {
+    const secBooks = BOOKS.filter(b => b.emotion === secondary.id);
+    pool = [...pool, ...secBooks];
+  }
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const primary = shuffled.filter(b => b.emotion === dominant.id);
+  const other = shuffled.filter(b => b.emotion !== dominant.id);
+  const ordered = [...primary, ...other];
+  return ordered.slice(0, 5);
+}
+
+const input = document.getElementById("emotion-input");
+const btn = document.getElementById("btn-submit");
+const charCount = document.getElementById("char-count");
+const loading = document.getElementById("loading");
+const resultSection = document.getElementById("result-section");
+const emotionIcon = document.getElementById("emotion-icon");
+const emotionName = document.getElementById("emotion-name");
+const emotionDesc = document.getElementById("emotion-desc");
+const emotionMeter = document.getElementById("emotion-meter");
+const booksGrid = document.getElementById("books-grid");
+
+input.addEventListener("input", () => {
+  const len = input.value.length;
+  charCount.textContent = len;
+  btn.classList.toggle("active", len > 0);
+});
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    if (btn.classList.contains("active")) submitQuery();
+  }
+});
+
+btn.addEventListener("click", submitQuery);
+
+function submitQuery() {
+  const text = input.value.trim();
+  if (!text) return;
+  btn.classList.remove("active");
+  resultSection.classList.remove("show");
+  loading.classList.add("show");
+  booksGrid.innerHTML = "";
+
+  setTimeout(() => {
+    const result = analyzeEmotion(text);
+    loading.classList.remove("show");
+    if (!result) {
+      const fallback = { dominant: EMOTIONS.find(e => e.id === "wonder"), secondary: null, intensity: 5, sorted: [] };
+      renderResults(fallback, BOOKS.sort(() => Math.random() - 0.5).slice(0, 4));
+      return;
+    }
+    const books = getRecommendations(result);
+    renderResults(result, books);
+  }, 800 + Math.random() * 500);
+}
+
+function renderResults(result, books) {
+  const emo = result.dominant;
+  emotionIcon.textContent = emo.icon;
+  emotionName.textContent = emo.label;
+  emotionDesc.textContent = emo.desc;
+  emotionMeter.innerHTML = "";
+  for (let i = 0; i < 10; i++) {
+    const span = document.createElement("span");
+    if (i < result.intensity) span.classList.add("active");
+    emotionMeter.appendChild(span);
+  }
+  booksGrid.innerHTML = "";
+  for (const book of books) {
+    const card = document.createElement("div");
+    card.className = "book-card";
+    card.innerHTML = '<div class="book-header"><span class="book-title">' + book.title +
+      '</span><span class="book-author">' + book.author +
+      '</span></div><div class="book-origin">' + book.origin +
+      '</div><div class="book-reason">' + book.reason + '</div>';
+    booksGrid.appendChild(card);
+  }
+  const aura = document.getElementById("aura");
+  aura.style.background = "radial-gradient(ellipse 80% 60% at 50% 30%, " + emo.color + "08 0%, var(--bg) 90%)";
+  resultSection.classList.add("show");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    const hints = ["思念一个人","心里空空的","今日心情像三月的风","愤怒像一团火","好想去看海","有些疲惫"];
+    input.placeholder = "试试写下：" + hints[Math.floor(Math.random() * hints.length)];
+  }, 2000);
+});
+</script>
+</body>
+</html>
